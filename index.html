@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Language Voice to Text </title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --bg: #f3f4f6;
+            --text: #1f2937;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        button, select {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+
+        select {
+            background-color: #e5e7eb;
+            color: var(--text);
+            border: 1px solid #d1d5db;
+        }
+
+        #recordBtn {
+            background-color: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #recordBtn:hover { opacity: 0.9; }
+
+        #recordBtn.recording {
+            background-color: #ef4444;
+            animation: pulse 1.5s infinite;
+        }
+
+        .secondary-btn {
+            background-color: #e5e7eb;
+            color: var(--text);
+        }
+
+        .secondary-btn:hover { background-color: #d1d5db; }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 1.2rem; /* Larger text for Arabic readability */
+            margin-bottom: 1rem;
+            box-sizing: border-box;
+            line-height: 1.6;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .status {
+            font-size: 0.875rem;
+            color: #6b7280;
+            margin-bottom: 1rem;
+            height: 20px;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Voice to Text</h1>
+    
+    <div class="controls">
+        <select id="langSelect" onchange="changeLanguage()">
+            <option value="ar-IQ">🇮🇶 Arabic (Iraq)</option>
+            <option value="en-US">🇺🇸 English (US)</option>
+            <option value="en-GB">🇬🇧 English (UK)</option>
+        </select>
+
+        <button id="recordBtn" onclick="toggleRecording()">
+            <span>Start Recording</span>
+        </button>
+        <button class="secondary-btn" onclick="copyText()">Copy</button>
+        <button class="secondary-btn" onclick="clearText()">Clear</button>
+    </div>
+
+    <div class="status" id="status">Select language and click Start...</div>
+
+    <textarea id="resultText" dir="auto" placeholder="Your speech will appear here..."></textarea>
+</div>
+
+<script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition;
+    let isRecording = false;
+
+    const recordBtn = document.getElementById('recordBtn');
+    const statusEl = document.getElementById('status');
+    const resultEl = document.getElementById('resultText');
+    const langSelect = document.getElementById('langSelect');
+
+    if (SpeechRecognition) {
+        recognition = new SpeechRecognition();
+        recognition.continuous = true; 
+        recognition.interimResults = true; 
+        
+        recognition.lang = langSelect.value;
+
+        recognition.onstart = () => {
+            isRecording = true;
+            recordBtn.innerHTML = '<span>Stop Recording</span>';
+            recordBtn.classList.add('recording');
+            statusEl.innerText = "Listening...";
+        };
+
+        recognition.onend = () => {
+            isRecording = false;
+            recordBtn.innerHTML = '<span>Start Recording</span>';
+            recordBtn.classList.remove('recording');
+            statusEl.innerText = "Stopped.";
+        };
+
+        recognition.onresult = (event) => {
+            const currentText = Array.from(event.results)
+                .map(result => result[0].transcript)
+                .join('');
+            
+            resultEl.value = currentText;
+        };
+
+        recognition.onerror = (event) => {
+            console.error(event.error);
+            statusEl.innerText = "Error: " + event.error;
+            isRecording = false;
+            recordBtn.classList.remove('recording');
+        };
+
+    } else {
+        recordBtn.disabled = true;
+        statusEl.innerText = "Browser not supported.";
+        alert("Please use Google Chrome, Edge, or Safari.");
+    }
+
+    function toggleRecording() {
+        if (!recognition) return;
+
+        if (isRecording) {
+            recognition.stop();
+        } else {
+            recognition.lang = langSelect.value;
+            
+            if (recognition.lang.startsWith('ar')) {
+                resultEl.setAttribute('dir', 'rtl'); 
+                resultEl.placeholder = "تحدث الآن...";
+            } else {
+                resultEl.setAttribute('dir', 'ltr'); 
+                resultEl.placeholder = "Your speech will appear here...";
+            }
+            
+            recognition.start();
+        }
+    }
+
+    function changeLanguage() {
+        // If user changes language while recording, restart to apply change
+        if (isRecording) {
+            recognition.stop();
+            statusEl.innerText = "Language changed Click Start to resume";
+        }
+    }
+
+    function copyText() {
+        resultEl.select();
+        document.execCommand('copy');
+        statusEl.innerText = "Copied!";
+        setTimeout(() => statusEl.innerText = "", 2000);
+    }
+
+    function clearText() {
+        resultEl.value = "";
+        statusEl.innerText = "Cleared";
+    }
+</script>
+
+</body>
+</html>
