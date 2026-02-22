@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recording History</title>
+    <style>
+        body { font-family: sans-serif; background: #f3f4f6; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { text-align: center; color: #333; }
+        .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .meta { color: #666; font-size: 0.9rem; margin-bottom: 10px; display: flex; justify-content: space-between; }
+        .text-content { font-size: 1.1rem; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; }
+        audio { width: 100%; height: 40px; }
+        .back-link { display: block; text-align: center; margin-bottom: 20px; text-decoration: none; color: #4f46e5; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <a href="/" class="back-link">← Back to Recorder</a>
+    <h1>History</h1>
+
+    {% for row in rows %}
+    <div class="card">
+        <div class="meta">
+            <span>ID: {{ row['id'] }} | Lang: {{ row['language'] }}</span>
+            <span>{{ row['timestamp'] }}</span>
+        </div>
+        <div class="text-content" dir="auto">{{ row['content'] }}</div>
+        
+        {% if row['audio_blob'] %}
+            <audio controls src="/audio/{{ row['id'] }}"></audio>
+        {% else %}
+            <span style="color:red">No Audio</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+</body>
+</html>

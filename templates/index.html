@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Voice To Text </title>
+    <style>
+        .history-btn {
+    display: inline-block;
+    padding: 8px 15px;
+    background-color: #6b7280; /* Gray color */
+    color: white;
+    text-decoration: none;
+    border-radius: 5px;
+    font-weight: bold;
+    font-size: 0.9rem;
+    margin-bottom: 15px;
+    transition: background 0.2s;
+}
+
+.history-btn:hover {
+    background-color: #4b5563; /* Darker gray on hover */
+}
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f3f4f6; margin-top: 50px; }
+        .container { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 600px; text-align: center; }
+        textarea { width: 100%; height: 150px; margin: 1rem 0; padding: 10px; font-size: 1.2rem; border-radius: 8px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; margin: 5px; }
+        .record-btn { background: #4f46e5; color: white; }
+        .save-btn { background: #10b981; color: white; }
+        .record-btn.recording { background: #ef4444; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
+        select { padding: 8px; margin-bottom: 10px; }
+        audio { width: 100%; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Save Audio & Text</h2>
+    <a href="/history" class="history-btn">View History</a>
+    
+    <select id="langSelect">
+        <option value="ar-IQ">🇮🇶 Arabic </option>
+        <option value="en-US">🇺🇸 English </option>
+    </select>
+
+    <div id="status" style="color: gray; margin-bottom: 10px;">Ready</div>
+
+    <textarea id="resultText" dir="auto" placeholder="Speak here..."></textarea>
+
+    <audio id="audioPlayback" controls style="display:none;"></audio>
+
+    <br><br>
+    <button class="record-btn" id="recordBtn" onclick="toggleRecording()">Start Recording</button>
+    <button class="save-btn" id="saveBtn" onclick="saveToDB()" disabled>Save to DB</button>
+</div>
+
+<script>
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    let mediaRecorder;
+    let audioChunks = [];
+    let audioBlob = null;
+    let isRecording = false;
+
+    // Elements
+    const resultEl = document.getElementById('resultText');
+    const statusEl = document.getElementById('status');
+    const recordBtn = document.getElementById('recordBtn');
+    const saveBtn = document.getElementById('saveBtn');
+    const audioPlayer = document.getElementById('audioPlayback');
+
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    recognition.onresult = (event) => {
+        const current = Array.from(event.results).map(r => r[0].transcript).join('');
+        resultEl.value = current;
+    };
+
+
+    async function toggleRecording() {
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
+    }
+
+    async function startRecording() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        
+        mediaRecorder.ondataavailable = (event) => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            audioPlayer.src = audioUrl;
+            audioPlayer.style.display = 'block';
+            saveBtn.disabled = false; // Enable save button
+        };
+
+        mediaRecorder.start();
+        
+        recognition.lang = document.getElementById('langSelect').value;
+        recognition.start();
+
+        isRecording = true;
+        recordBtn.innerText = "Stop Recording";
+        recordBtn.classList.add('recording');
+        statusEl.innerText = "Recording Audio & Text...";
+        resultEl.value = ""; // Clear previous text
+        audioPlayer.style.display = 'none';
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+        recognition.stop();
+
+        isRecording = false;
+        recordBtn.innerText = "Start Recording";
+        recordBtn.classList.remove('recording');
+        statusEl.innerText = "Stopped. Click Save to keep data.";
+    }
+
+    function saveToDB() {
+        if (!audioBlob || !resultEl.value) {
+            alert("Please record something first.");
+            return;
+        }
+
+        statusEl.innerText = "Uploading...";
+        
+        const formData = new FormData();
+        formData.append('audio', audioBlob, 'recording.webm');
+        formData.append('text', resultEl.value);
+        formData.append('lang', document.getElementById('langSelect').value);
+
+        fetch('/save', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if(data.status === 'success') {
+                statusEl.innerText = "Saved successfully!";
+                saveBtn.disabled = true;
+            } else {
+                statusEl.innerText = "Error: " + data.message;
+            }
+        })
+        .catch(err => console.error(err));
+    }
+</script>
+
+</body>
+</html>
