@@ -2,71 +2,430 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Voice To Text </title>
+    <title>Voice To Text</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        .history-btn {
-    display: inline-block;
-    padding: 8px 15px;
-    background-color: #6b7280; /* Gray color */
-    color: white;
-    text-decoration: none;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 0.9rem;
-    margin-bottom: 15px;
-    transition: background 0.2s;
-}
+        :root {
+            --bg: #0f0f14;
+            --pink: #c2185b;
+            --pink-soft: #6d2b4a;
+            --pink-panel: #2a1220;
+            --pink-border: #7a1f45;
+            --blue: #4f46e5;
+            --blue-soft: #2d2b6b;
+            --blue-panel: #141230;
+            --blue-border: #3730a3;
+            --text: #e8e0f0;
+            --text-muted: #9a8fa8;
+            --card-bg: rgba(255,255,255,0.04);
+        }
 
-.history-btn:hover {
-    background-color: #4b5563; /* Darker gray on hover */
-}
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f3f4f6; margin-top: 50px; }
-        .container { background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 600px; text-align: center; }
-        textarea { width: 100%; height: 150px; margin: 1rem 0; padding: 10px; font-size: 1.2rem; border-radius: 8px; border: 1px solid #ccc; }
-        button { padding: 10px 20px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; margin: 5px; }
-        .record-btn { background: #4f46e5; color: white; }
-        .save-btn { background: #10b981; color: white; }
-        .record-btn.recording { background: #ef4444; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
-        select { padding: 8px; margin-bottom: 10px; }
-        audio { width: 100%; margin-top: 10px; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* Ambient background glow */
+        body::before {
+            content: '';
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(196,24,91,0.08) 0%, transparent 70%);
+            top: -100px;
+            right: 100px;
+            pointer-events: none;
+        }
+
+        .layout {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            position: relative;
+        }
+
+        /* ── Sidebar buttons ── */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            z-index: 10;
+        }
+
+        .nav-btn {
+            width: 170px;
+            padding: 18px 24px;
+            border-radius: 50px;
+            border: none;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: var(--text);
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            text-align: left;
+        }
+
+        .nav-btn.vtt {
+            background: var(--pink-soft);
+            box-shadow: 0 4px 20px rgba(196,24,91,0.15);
+        }
+        .nav-btn.vtt.active {
+            background: var(--pink);
+            box-shadow: 0 6px 30px rgba(196,24,91,0.45);
+            color: #fff;
+        }
+        .nav-btn.vtt:hover:not(.active) {
+            background: #7d3357;
+            box-shadow: 0 4px 24px rgba(196,24,91,0.25);
+        }
+
+        .nav-btn.ttv {
+            background: var(--blue-soft);
+            box-shadow: 0 4px 20px rgba(79,70,229,0.15);
+            cursor: pointer;
+        }
+        .nav-btn.ttv.active {
+            background: var(--blue);
+            box-shadow: 0 6px 30px rgba(79,70,229,0.45);
+            color: #fff;
+        }
+        .nav-btn.ttv:hover:not(.active) {
+            background: #3d3a8a;
+            box-shadow: 0 4px 24px rgba(79,70,229,0.28);
+        }
+
+        /* ── Arrow connector ── */
+        .arrow-connector {
+            width: 48px;
+            height: 90px;
+            position: relative;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            padding-top: 8px;
+            transition: padding 0.4s cubic-bezier(0.4,0,0.2,1);
+        }
+        .arrow-connector.ttv-active {
+            justify-content: flex-end;
+            padding-top: 0;
+            padding-bottom: 8px;
+        }
+
+        .arrow-connector svg {
+            width: 100%;
+            height: 36px;
+            flex-shrink: 0;
+        }
+
+        /* ── Main panel ── */
+        .panel {
+            width: 680px;
+            min-height: 520px;
+            border-radius: 28px;
+            padding: 36px 40px;
+            transition: background 0.4s ease, border-color 0.4s ease, box-shadow 0.4s ease;
+            position: relative;
+        }
+        .panel.vtt-mode {
+            background: var(--pink-panel);
+            border: 1px solid var(--pink-border);
+            box-shadow: 0 20px 60px rgba(196,24,91,0.2), 0 0 0 1px rgba(196,24,91,0.1);
+        }
+        .panel.ttv-mode {
+            background: var(--blue-panel);
+            border: 1px solid var(--blue-border);
+            box-shadow: 0 20px 60px rgba(79,70,229,0.2), 0 0 0 1px rgba(79,70,229,0.1);
+        }
+
+        /* Panel content sections */
+        .panel-section { display: none; animation: fadeIn 0.3s ease; }
+        .panel-section.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* TTV empty state */
+        .ttv-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+            gap: 16px;
+            color: rgba(165,180,252,0.35);
+        }
+        .ttv-empty-icon { font-size: 4rem; }
+        .ttv-empty p {
+            font-size: 0.9rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        /* ── Panel content ── */
+        .panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .panel-title {
+            font-family: 'Syne', sans-serif;
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+        }
+
+        .top-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            background: rgba(194,24,91,0.15);
+            color: #e879a0;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border: 1px solid rgba(194,24,91,0.3);
+            transition: all 0.2s;
+        }
+        .history-btn:hover {
+            background: rgba(194,24,91,0.28);
+            border-color: rgba(194,24,91,0.5);
+        }
+
+        .lang-select {
+            padding: 8px 14px;
+            background: rgba(255,255,255,0.06);
+            color: var(--text);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50px;
+            font-size: 0.95rem;
+            font-family: 'DM Sans', sans-serif;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .lang-select:hover { border-color: rgba(194,24,91,0.4); }
+        .lang-select option { background: #1e0f18; }
+
+        /* Status */
+        .status-bar {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            transition: all 0.3s;
+            flex-shrink: 0;
+        }
+        .status-dot.recording {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239,68,68,0.8);
+            animation: pulse-dot 1.2s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.7; }
+        }
+
+        /* Textarea */
+        textarea {
+            width: 100%;
+            height: 180px;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(194,24,91,0.2);
+            border-radius: 16px;
+            padding: 16px 18px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1.2rem;
+            color: var(--text);
+            resize: none;
+            outline: none;
+            transition: border-color 0.2s;
+            line-height: 1.6;
+        }
+        textarea::placeholder { color: rgba(154,143,168,0.5); }
+        textarea:focus { border-color: rgba(194,24,91,0.5); }
+
+        /* Audio player */
+        audio {
+            width: 100%;
+            height: 38px;
+            margin-top: 14px;
+            border-radius: 50px;
+            outline: none;
+        }
+        audio::-webkit-media-controls-panel {
+            background: rgba(0,0,0,0.3);
+            border-radius: 50px;
+        }
+
+        /* Action buttons */
+        .action-row {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 12px 28px;
+            border-radius: 50px;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-record {
+            background: var(--pink);
+            color: white;
+            box-shadow: 0 4px 18px rgba(196,24,91,0.4);
+        }
+        .btn-record:hover {
+            background: #d81b60;
+            box-shadow: 0 6px 24px rgba(196,24,91,0.55);
+            transform: translateY(-1px);
+        }
+        .btn-record.recording {
+            background: #b71c1c;
+            box-shadow: 0 4px 18px rgba(183,28,28,0.5);
+            animation: pulse-btn 1.5s infinite;
+        }
+        @keyframes pulse-btn {
+            0%, 100% { box-shadow: 0 4px 18px rgba(183,28,28,0.5); }
+            50% { box-shadow: 0 4px 28px rgba(183,28,28,0.8); }
+        }
+
+        .btn-save {
+            background: rgba(255,255,255,0.06);
+            color: var(--text-muted);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-save:not(:disabled):hover {
+            background: rgba(79,70,229,0.2);
+            color: #a5b4fc;
+            border-color: rgba(79,70,229,0.4);
+            transform: translateY(-1px);
+        }
+        .btn-save:disabled { opacity: 0.35; cursor: not-allowed; }
+        .btn-save:not(:disabled) {
+            background: rgba(16,185,129,0.12);
+            color: #6ee7b7;
+            border-color: rgba(16,185,129,0.3);
+        }
+
+        /* Mic icon animation */
+        .mic-icon { font-size: 0.95rem; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Save Audio & Text</h2>
-    <a href="/history" class="history-btn">View History</a>
-    
-    <select id="langSelect">
-        <option value="ar-IQ">🇮🇶 Arabic </option>
-        <option value="en-US">🇺🇸 English </option>
-    </select>
+<div class="layout">
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <button class="nav-btn vtt active" id="btnVTT" onclick="selectMode('vtt')">🎙 Voice To Text</button>
+        <button class="nav-btn ttv" id="btnTTV" onclick="selectMode('ttv')">🔊 Text to Voice</button>
+    </div>
 
-    <div id="status" style="color: gray; margin-bottom: 10px;">Ready</div>
+    <!-- Arrow connector -->
+    <div class="arrow-connector" id="arrowConnector">
+        <svg id="arrowSvg" viewBox="0 0 48 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M48 18 L18 4 L24 18 L18 32 Z" fill="rgba(194,24,91,0.7)"/>
+            <rect x="0" y="14" width="22" height="8" rx="4" fill="rgba(194,24,91,0.5)"/>
+        </svg>
+    </div>
 
-    <textarea id="resultText" dir="auto" placeholder="Speak here..."></textarea>
+    <!-- Main Panel -->
+    <div class="panel vtt-mode" id="mainPanel">
 
-    <audio id="audioPlayback" controls style="display:none;"></audio>
+        <!-- VTT Section -->
+        <div class="panel-section active" id="vttSection">
+            <div class="panel-header">
+                <span class="panel-title">Save Audio & Text</span>
+                <div class="top-controls">
+                    <a href="/history" class="history-btn">📋 View History</a>
+                    <select class="lang-select" id="langSelect">
+                        <option value="ar-IQ">🇮🇶 Arabic</option>
+                        <option value="en-US">🇺🇸 English</option>
+                    </select>
+                </div>
+            </div>
+            <div class="status-bar">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="status">Ready</span>
+            </div>
+            <textarea id="resultText" dir="auto" placeholder="Speak here..."></textarea>
+            <audio id="audioPlayback" controls style="display:none;"></audio>
+            <div class="action-row">
+                <button class="btn btn-record" id="recordBtn" onclick="toggleRecording()">
+                    <span class="mic-icon">🎙</span>
+                    <span id="recordBtnText">Start Recording</span>
+                </button>
+                <button class="btn btn-save" id="saveBtn" onclick="saveToDB()" disabled>
+                    💾 Save to DB
+                </button>
+            </div>
+        </div>
 
-    <br><br>
-    <button class="record-btn" id="recordBtn" onclick="toggleRecording()">Start Recording</button>
-    <button class="save-btn" id="saveBtn" onclick="saveToDB()" disabled>Save to DB</button>
+        <!-- TTV Section (empty for now) -->
+        <div class="panel-section" id="ttvSection">
+            <div class="ttv-empty">
+                <div class="ttv-empty-icon">🔊</div>
+                <p>Coming Soon</p>
+            </div>
+        </div>
+
+    </div>
 </div>
 
 <script>
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    
+
     let mediaRecorder;
     let audioChunks = [];
     let audioBlob = null;
     let isRecording = false;
 
-    // Elements
     const resultEl = document.getElementById('resultText');
     const statusEl = document.getElementById('status');
+    const statusDot = document.getElementById('statusDot');
     const recordBtn = document.getElementById('recordBtn');
+    const recordBtnText = document.getElementById('recordBtnText');
     const saveBtn = document.getElementById('saveBtn');
     const audioPlayer = document.getElementById('audioPlayback');
 
@@ -78,54 +437,80 @@
         resultEl.value = current;
     };
 
+    function selectMode(mode) {
+        const panel = document.getElementById('mainPanel');
+        const arrow = document.getElementById('arrowConnector');
+        const arrowSvg = document.getElementById('arrowSvg');
+        const btnVTT = document.getElementById('btnVTT');
+        const btnTTV = document.getElementById('btnTTV');
+        const vttSection = document.getElementById('vttSection');
+        const ttvSection = document.getElementById('ttvSection');
+
+        if (mode === 'vtt') {
+            btnVTT.classList.add('active');
+            btnTTV.classList.remove('active');
+            panel.classList.remove('ttv-mode');
+            panel.classList.add('vtt-mode');
+            arrow.classList.remove('ttv-active');
+            arrowSvg.innerHTML = `
+                <path d="M48 18 L18 4 L24 18 L18 32 Z" fill="rgba(194,24,91,0.7)"/>
+                <rect x="0" y="14" width="22" height="8" rx="4" fill="rgba(194,24,91,0.5)"/>`;
+            vttSection.classList.add('active');
+            ttvSection.classList.remove('active');
+        } else {
+            btnTTV.classList.add('active');
+            btnVTT.classList.remove('active');
+            panel.classList.remove('vtt-mode');
+            panel.classList.add('ttv-mode');
+            arrow.classList.add('ttv-active');
+            arrowSvg.innerHTML = `
+                <path d="M48 18 L18 4 L24 18 L18 32 Z" fill="rgba(79,70,229,0.7)"/>
+                <rect x="0" y="14" width="22" height="8" rx="4" fill="rgba(79,70,229,0.5)"/>`;
+            ttvSection.classList.add('active');
+            vttSection.classList.remove('active');
+        }
+    }
 
     async function toggleRecording() {
-        if (isRecording) {
-            stopRecording();
-        } else {
-            startRecording();
-        }
+        if (isRecording) stopRecording();
+        else startRecording();
     }
 
     async function startRecording() {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
-        
-        mediaRecorder.ondataavailable = (event) => {
-            audioChunks.push(event.data);
-        };
+
+        mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
 
         mediaRecorder.onstop = () => {
             audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-            const audioUrl = URL.createObjectURL(audioBlob);
-            audioPlayer.src = audioUrl;
+            audioPlayer.src = URL.createObjectURL(audioBlob);
             audioPlayer.style.display = 'block';
-            saveBtn.disabled = false; // Enable save button
+            saveBtn.disabled = false;
         };
 
         mediaRecorder.start();
-        
         recognition.lang = document.getElementById('langSelect').value;
         recognition.start();
 
         isRecording = true;
-        recordBtn.innerText = "Stop Recording";
         recordBtn.classList.add('recording');
-        statusEl.innerText = "Recording Audio & Text...";
-        resultEl.value = ""; // Clear previous text
+        recordBtnText.textContent = 'Stop Recording';
+        statusDot.classList.add('recording');
+        statusEl.textContent = 'Recording Audio & Text...';
+        resultEl.value = '';
         audioPlayer.style.display = 'none';
     }
 
     function stopRecording() {
         mediaRecorder.stop();
         recognition.stop();
-
         isRecording = false;
-        recordBtn.innerText = "Start Recording";
         recordBtn.classList.remove('recording');
-        statusEl.innerText = "Stopped. Click Save to keep data.";
+        recordBtnText.textContent = 'Start Recording';
+        statusDot.classList.remove('recording');
+        statusEl.textContent = 'Stopped. Click Save to keep data.';
     }
 
     function saveToDB() {
@@ -133,30 +518,25 @@
             alert("Please record something first.");
             return;
         }
+        statusEl.textContent = 'Uploading...';
 
-        statusEl.innerText = "Uploading...";
-        
         const formData = new FormData();
         formData.append('audio', audioBlob, 'recording.webm');
         formData.append('text', resultEl.value);
         formData.append('lang', document.getElementById('langSelect').value);
 
-        fetch('/save', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if(data.status === 'success') {
-                statusEl.innerText = "Saved successfully!";
-                saveBtn.disabled = true;
-            } else {
-                statusEl.innerText = "Error: " + data.message;
-            }
-        })
-        .catch(err => console.error(err));
+        fetch('/save', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    statusEl.textContent = '✓ Saved successfully!';
+                    saveBtn.disabled = true;
+                } else {
+                    statusEl.textContent = 'Error: ' + data.message;
+                }
+            })
+            .catch(err => console.error(err));
     }
 </script>
-
 </body>
 </html>

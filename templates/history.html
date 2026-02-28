@@ -3,38 +3,177 @@
 <head>
     <meta charset="UTF-8">
     <title>Recording History</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #f3f4f6; padding: 20px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        h1 { text-align: center; color: #333; }
-        .card { background: white; padding: 15px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .meta { color: #666; font-size: 0.9rem; margin-bottom: 10px; display: flex; justify-content: space-between; }
-        .text-content { font-size: 1.1rem; line-height: 1.5; margin-bottom: 10px; white-space: pre-wrap; }
-        audio { width: 100%; height: 40px; }
-        .back-link { display: block; text-align: center; margin-bottom: 20px; text-decoration: none; color: #4f46e5; font-weight: bold; }
+        :root {
+            --bg: #0f0f14;
+            --pink: #c2185b;
+            --pink-panel: #2a1220;
+            --pink-border: #7a1f45;
+            --text: #e8e0f0;
+            --text-muted: #9a8fa8;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: var(--text);
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            width: 500px;
+            height: 500px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(196,24,91,0.07) 0%, transparent 70%);
+            top: -80px;
+            right: 80px;
+            pointer-events: none;
+        }
+
+        .container {
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        .top-nav {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            text-decoration: none;
+            color: #e879a0;
+            font-size: 1rem;
+            font-weight: 500;
+            padding: 8px 18px;
+            border-radius: 50px;
+            background: rgba(194,24,91,0.1);
+            border: 1px solid rgba(194,24,91,0.25);
+            transition: all 0.2s;
+        }
+        .back-link:hover {
+            background: rgba(194,24,91,0.22);
+            border-color: rgba(194,24,91,0.45);
+        }
+
+        h1 {
+            font-family: 'Syne', sans-serif;
+            text-align: center;
+            font-size: 2.4rem;
+            font-weight: 700;
+            color: var(--text);
+            letter-spacing: -0.02em;
+            margin-bottom: 28px;
+        }
+
+        .card {
+            background: var(--pink-panel);
+            border: 1px solid var(--pink-border);
+            padding: 20px 24px;
+            margin-bottom: 16px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            transition: box-shadow 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 6px 28px rgba(196,24,91,0.15);
+        }
+
+        .meta {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .meta-left {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 3px 10px;
+            background: rgba(194,24,91,0.15);
+            border: 1px solid rgba(194,24,91,0.25);
+            border-radius: 50px;
+            font-size: 0.82rem;
+            color: #e879a0;
+        }
+
+        .text-content {
+            font-size: 1.15rem;
+            line-height: 1.7;
+            margin-bottom: 14px;
+            white-space: pre-wrap;
+            color: var(--text);
+        }
+
+        audio {
+            width: 100%;
+            height: 36px;
+            border-radius: 50px;
+            outline: none;
+        }
+
+        .no-audio {
+            font-size: 0.8rem;
+            color: #f87171;
+            opacity: 0.7;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-muted);
+        }
+        .empty-state p { font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <a href="/" class="back-link">← Back to Recorder</a>
+    <div class="top-nav">
+        <a href="/" class="back-link">← Back to Recorder</a>
+    </div>
+
     <h1>History</h1>
 
-    {% for row in rows %}
-    <div class="card">
-        <div class="meta">
-            <span>ID: {{ row['id'] }} | Lang: {{ row['language'] }}</span>
-            <span>{{ row['timestamp'] }}</span>
+    {% if rows %}
+        {% for row in rows %}
+        <div class="card">
+            <div class="meta">
+                <div class="meta-left">
+                    <span class="badge">ID {{ row['id'] }}</span>
+                    <span class="badge">{{ row['language'] }}</span>
+                </div>
+                <span>{{ row['timestamp'] }}</span>
+            </div>
+            <div class="text-content" dir="auto">{{ row['content'] }}</div>
+
+            {% if row['audio_blob'] %}
+                <audio controls src="/audio/{{ row['id'] }}"></audio>
+            {% else %}
+                <span class="no-audio">⚠ No Audio</span>
+            {% endif %}
         </div>
-        <div class="text-content" dir="auto">{{ row['content'] }}</div>
-        
-        {% if row['audio_blob'] %}
-            <audio controls src="/audio/{{ row['id'] }}"></audio>
-        {% else %}
-            <span style="color:red">No Audio</span>
-        {% endif %}
-    </div>
-    {% endfor %}
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <p>No recordings yet. Start speaking!</p>
+        </div>
+    {% endif %}
 </div>
 
 </body>
