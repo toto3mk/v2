@@ -424,7 +424,7 @@
         <!-- VTT Section -->
         <div class="panel-section active" id="vttSection">
             <div class="panel-header">
-                <span class="panel-title">Audio To Text</span>
+                <span class="panel-title">Save Audio & Text</span>
                 <div class="top-controls">
                     <a href="/history" class="history-btn">📋 View History</a>
                     <select class="lang-select" id="langSelect">
@@ -455,7 +455,7 @@
             <div class="panel-header">
                 <span class="panel-title">Text to Voice</span>
                 <div class="top-controls">
-                    <a href="/history" class="history-btn blue">📋 View History</a>
+                    <a href="#" class="history-btn blue" onclick="return false;" style="opacity:0.5; cursor:not-allowed;">📋 View History</a>
                     <select class="lang-select blue" id="ttvLangSelect">
                         <option value="ar-IQ">🇮🇶 Arabic</option>
                         <option value="en-US">🇺🇸 English</option>
@@ -618,14 +618,15 @@
             })
             .catch(err => console.error(err));
     }
-    // TTV — enable Generate button when text is present
+    // TTV — reset to Generate state when user edits text
     document.getElementById('ttvInputText').addEventListener('input', function() {
         const generateBtn = document.getElementById('ttvGenerateBtn');
         const playBtn = document.getElementById('ttvPlayBtn');
         const hasText = this.value.trim() !== '';
 
-        // Reset to Generate state if user edits text
         if (playBtn.style.display === 'flex') {
+            ttvAudioUrl = null;
+            document.getElementById('ttvAudioPlayback').style.display = 'none';
             playBtn.style.display = 'none';
             generateBtn.style.display = 'flex';
             generateBtn.innerHTML = '🔊 <span>Generate Audio</span>';
@@ -636,30 +637,72 @@
         generateBtn.disabled = !hasText;
     });
 
-    // TTV — Generate Audio clicked: hide Generate, show Play (non-functional until ElevenLabs)
-    document.getElementById('ttvGenerateBtn').addEventListener('click', function() {
+    // TTV — Google Translate TTS (via Flask proxy)
+    let ttvAudioUrl = null;
+
+    document.getElementById('ttvGenerateBtn').addEventListener('click', async function() {
         const generateBtn = document.getElementById('ttvGenerateBtn');
         const playBtn = document.getElementById('ttvPlayBtn');
         const ttvStatus = document.getElementById('ttvStatus');
+        const ttvAudio = document.getElementById('ttvAudioPlayback');
+        const text = document.getElementById('ttvInputText').value.trim();
+        const lang = document.getElementById('ttvLangSelect').value;
 
-        // Simulate "generating" state
+        if (!text) return;
+
         generateBtn.disabled = true;
         generateBtn.innerHTML = '⏳ <span>Generating...</span>';
         ttvStatus.textContent = 'Generating audio...';
+        ttvAudio.style.display = 'none';
+        playBtn.style.display = 'none';
 
-        // After short delay, show Play button (placeholder until API is wired)
-        setTimeout(() => {
-            generateBtn.style.display = 'none';
-            playBtn.style.display = 'flex';
-            ttvStatus.textContent = 'Audio ready. Press Play to listen.';
-            document.getElementById('ttvSaveBtn').disabled = false;
-        }, 1200);
+        try {
+            const response = await fetch('/tts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, lang })
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                ttvAudioUrl = URL.createObjectURL(blob);
+                ttvAudio.src = ttvAudioUrl;
+                ttvAudio.style.display = 'block';
+
+                generateBtn.style.display = 'none';
+                playBtn.style.display = 'flex';
+                document.getElementById('ttvSaveBtn').disabled = false;
+                ttvStatus.textContent = '✓ Ready. Press Play to listen.';
+            } else {
+                const err = await response.json();
+                ttvStatus.textContent = '✗ Error: ' + err.message;
+                generateBtn.disabled = false;
+                generateBtn.innerHTML = '🔊 <span>Generate Audio</span>';
+            }
+        } catch (err) {
+            ttvStatus.textContent = '✗ Network error. Try again.';
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '🔊 <span>Generate Audio</span>';
+            console.error(err);
+        }
     });
 
-    // TTV — Play clicked (non-functional placeholder)
+    // TTV — Play button
     document.getElementById('ttvPlayBtn').addEventListener('click', function() {
-        document.getElementById('ttvStatus').textContent = '⚠ Playback not available yet.';
+        const ttvAudio = document.getElementById('ttvAudioPlayback');
+        const ttvStatus = document.getElementById('ttvStatus');
+        if (ttvAudio.src) {
+            ttvAudio.currentTime = 0;
+            ttvAudio.play();
+            ttvStatus.textContent = '▶ Playing...';
+            ttvAudio.onended = () => {
+                ttvStatus.textContent = '✓ Done.';
+            };
+        }
     });
+
+    // Voices may load async — re-trigger if needed
+    speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
 </script>
 </body>
 </html>
