@@ -350,6 +350,55 @@
 
         /* Mic icon animation */
         .mic-icon { font-size: 0.95rem; }
+
+        /* ── TTV blue overrides ── */
+        .history-btn.blue {
+            background: rgba(79,70,229,0.15);
+            color: #a5b4fc;
+            border-color: rgba(79,70,229,0.3);
+        }
+        .history-btn.blue:hover {
+            background: rgba(79,70,229,0.28);
+            border-color: rgba(79,70,229,0.5);
+        }
+        .textarea-blue { border-color: rgba(79,70,229,0.25); }
+        .textarea-blue:focus { border-color: rgba(79,70,229,0.55) !important; }
+
+        .btn-generate {
+            background: var(--blue);
+            color: white;
+            box-shadow: 0 4px 18px rgba(79,70,229,0.4);
+        }
+        .btn-generate:hover {
+            background: #4338ca;
+            box-shadow: 0 6px 24px rgba(79,70,229,0.55);
+            transform: translateY(-1px);
+        }
+        .btn-generate:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+        .btn-play {
+            background: rgba(99,102,241,0.12);
+            color: #a5b4fc;
+            border: 1px solid rgba(99,102,241,0.3);
+        }
+        .btn-play:hover:not(:disabled) {
+            background: rgba(99,102,241,0.25);
+            border-color: rgba(99,102,241,0.5);
+            transform: translateY(-1px);
+        }
+        .btn-play:disabled { opacity: 0.35; cursor: not-allowed; }
+
+        .btn-save-blue {
+            background: rgba(16,185,129,0.12);
+            color: #6ee7b7;
+            border: 1px solid rgba(16,185,129,0.3);
+        }
+        .btn-save-blue:hover:not(:disabled) {
+            background: rgba(16,185,129,0.22);
+            border-color: rgba(16,185,129,0.5);
+            transform: translateY(-1px);
+        }
+        .btn-save-blue:disabled { opacity: 0.35; cursor: not-allowed; }
     </style>
 </head>
 <body>
@@ -375,7 +424,7 @@
         <!-- VTT Section -->
         <div class="panel-section active" id="vttSection">
             <div class="panel-header">
-                <span class="panel-title">Save Audio & Text</span>
+                <span class="panel-title">Audio To Text</span>
                 <div class="top-controls">
                     <a href="/history" class="history-btn">📋 View History</a>
                     <select class="lang-select" id="langSelect">
@@ -401,11 +450,43 @@
             </div>
         </div>
 
-        <!-- TTV Section (empty for now) -->
+        <!-- TTV Section -->
         <div class="panel-section" id="ttvSection">
-            <div class="ttv-empty">
-                <div class="ttv-empty-icon">🔊</div>
-                <p>Coming Soon</p>
+            <div class="panel-header">
+                <span class="panel-title">Text to Voice</span>
+                <div class="top-controls">
+                    <a href="/history" class="history-btn blue">📋 View History</a>
+                    <select class="lang-select blue" id="ttvLangSelect">
+                        <option value="ar-IQ">🇮🇶 Arabic</option>
+                        <option value="en-US">🇺🇸 English</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <div class="status-dot" id="ttvStatusDot" style="background:#6366f1;"></div>
+                <span id="ttvStatus">Ready</span>
+            </div>
+
+            <textarea
+                id="ttvInputText"
+                class="textarea-blue"
+                dir="auto"
+                placeholder="Type text here to convert to voice..."
+            ></textarea>
+
+            <audio id="ttvAudioPlayback" controls style="display:none;"></audio>
+
+            <div class="action-row">
+                <button class="btn btn-generate" id="ttvGenerateBtn" disabled>
+                    🔊 <span>Generate Audio</span>
+                </button>
+                <button class="btn btn-play" id="ttvPlayBtn" style="display:none;">
+                    ▶ Play
+                </button>
+                <button class="btn btn-save-blue" id="ttvSaveBtn" disabled>
+                    💾 Save to DB
+                </button>
             </div>
         </div>
 
@@ -537,6 +618,48 @@
             })
             .catch(err => console.error(err));
     }
+    // TTV — enable Generate button when text is present
+    document.getElementById('ttvInputText').addEventListener('input', function() {
+        const generateBtn = document.getElementById('ttvGenerateBtn');
+        const playBtn = document.getElementById('ttvPlayBtn');
+        const hasText = this.value.trim() !== '';
+
+        // Reset to Generate state if user edits text
+        if (playBtn.style.display === 'flex') {
+            playBtn.style.display = 'none';
+            generateBtn.style.display = 'flex';
+            generateBtn.innerHTML = '🔊 <span>Generate Audio</span>';
+            document.getElementById('ttvSaveBtn').disabled = true;
+            document.getElementById('ttvStatus').textContent = 'Ready';
+        }
+
+        generateBtn.disabled = !hasText;
+    });
+
+    // TTV — Generate Audio clicked: hide Generate, show Play (non-functional until ElevenLabs)
+    document.getElementById('ttvGenerateBtn').addEventListener('click', function() {
+        const generateBtn = document.getElementById('ttvGenerateBtn');
+        const playBtn = document.getElementById('ttvPlayBtn');
+        const ttvStatus = document.getElementById('ttvStatus');
+
+        // Simulate "generating" state
+        generateBtn.disabled = true;
+        generateBtn.innerHTML = '⏳ <span>Generating...</span>';
+        ttvStatus.textContent = 'Generating audio...';
+
+        // After short delay, show Play button (placeholder until API is wired)
+        setTimeout(() => {
+            generateBtn.style.display = 'none';
+            playBtn.style.display = 'flex';
+            ttvStatus.textContent = 'Audio ready. Press Play to listen.';
+            document.getElementById('ttvSaveBtn').disabled = false;
+        }, 1200);
+    });
+
+    // TTV — Play clicked (non-functional placeholder)
+    document.getElementById('ttvPlayBtn').addEventListener('click', function() {
+        document.getElementById('ttvStatus').textContent = '⚠ Playback not available yet.';
+    });
 </script>
 </body>
 </html>
